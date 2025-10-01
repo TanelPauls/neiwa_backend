@@ -1,0 +1,46 @@
+### Java ###
+*.class
+*.jar
+*.war
+*.ear
+
+### Gradle ###
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### IntelliJ IDEA ###
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+### Eclipse ###
+.project
+.classpath
+.settings/
+
+### VS Code ###
+.vscode/
+
+### Logs ###
+*.log
+hs_err_pid*
+replay_pid*
+
+### OS crap ###
+.DS_Store
+Thumbs.db
+
+### Docker ###
+*.pid
+.env
+
+bin/
+
+/test-output/
+/reports/
+/coverage/

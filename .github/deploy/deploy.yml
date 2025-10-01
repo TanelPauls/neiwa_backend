@@ -1,0 +1,52 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+      - tannu
+      - "**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            set -e
+
+            cd ~/neiwa/backend
+
+            # Pick color (blue/green)
+            if [ ! -f current_color_${GITHUB_REF_NAME} ]; then
+              COLOR=blue
+            else
+              CURRENT=$(cat current_color_${GITHUB_REF_NAME})
+              if [ "$CURRENT" = "blue" ]; then COLOR=green; else COLOR=blue; fi
+            fi
+
+            echo "Deploying branch=${GITHUB_REF_NAME} color=$COLOR"
+
+            BRANCH_NAME=${GITHUB_REF_NAME}
+            export BRANCH_NAME
+            export COLOR
+
+            git fetch origin $GITHUB_REF_NAME
+            git checkout $GITHUB_REF_NAME
+            git reset --hard origin/$GITHUB_REF_NAME
+
+            docker compose -p ${BRANCH_NAME}-${COLOR} up -d --build
+
+            echo $COLOR > current_color_${GITHUB_REF_NAME}
+
+            # Reload nginx (frontend repo owns config, but we need fresh reload)
+            sudo systemctl reload nginx

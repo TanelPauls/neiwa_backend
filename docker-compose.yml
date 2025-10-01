@@ -1,0 +1,11 @@
+services:
+  backend:
+    build: .
+    container_name: ${BRANCH}-${COLOR}-backend
+    env_file:
+      - ../frontend/.env
+    environment:
+      - PORT_DOCKER_INTERNAL_BACKEND=${PORT_DOCKER_INTERNAL_BACKEND}
+    ports:
+      - "${PORT_BACKEND_EXTERNAL}:${PORT_DOCKER_INTERNAL_BACKEND}"
+    restart: unless-stopped
