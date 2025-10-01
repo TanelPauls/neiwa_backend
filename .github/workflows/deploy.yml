@@ -49,19 +49,39 @@ jobs:
             # Domain(s)
             if [ "$BRANCH" = "main" ]; then DOMAIN="neiwa.eu www.neiwa.eu"; else DOMAIN="$BRANCH.neiwa.eu"; fi
 
-            # === Pull latest code
+            # === Pull latest frontend
             cd ~/neiwa/frontend
             git fetch origin "$BRANCH"
             git checkout "$BRANCH" || git checkout -b "$BRANCH"
             git reset --hard "origin/$BRANCH"
             git clean -fd
 
-            # === Start NEW color (frontend + backend) under one compose file
-            PORT=$PORT \
-            PORT_DOCKER_INTERNAL=$PORT_DOCKER_INTERNAL \
-            PORT_BACKEND_EXTERNAL=$PORT_BACKEND_EXTERNAL \
-            PORT_DOCKER_INTERNAL_BACKEND=$PORT_DOCKER_INTERNAL_BACKEND \
-              docker compose -p "$BRANCH-$NEWCOLOR" up -d --build
+            # === Start NEW color (frontend)
+            (
+              cd ~/neiwa/frontend
+              PORT=$PORT \
+              PORT_DOCKER_INTERNAL=$PORT_DOCKER_INTERNAL \
+              PORT_BACKEND_EXTERNAL=$PORT_BACKEND_EXTERNAL \
+              PORT_DOCKER_INTERNAL_BACKEND=$PORT_DOCKER_INTERNAL_BACKEND \
+              docker compose --env-file $ENV_FILE -p "$BRANCH-$NEWCOLOR" up -d --build
+            )
+
+            # === Pull latest backend
+            cd ~/neiwa/backend
+            git fetch origin "$BRANCH"
+            git checkout "$BRANCH" || git checkout -b "$BRANCH"
+            git reset --hard "origin/$BRANCH"
+            git clean -fd
+
+            # === Start NEW color (backend)
+            (
+              cd ~/neiwa/backend
+              PORT=$PORT \
+              PORT_DOCKER_INTERNAL=$PORT_DOCKER_INTERNAL \
+              PORT_BACKEND_EXTERNAL=$PORT_BACKEND_EXTERNAL \
+              PORT_DOCKER_INTERNAL_BACKEND=$PORT_DOCKER_INTERNAL_BACKEND \
+              docker compose --env-file $ENV_FILE -p "$BRANCH-$NEWCOLOR" up -d --build
+            )
 
             # === Generate Nginx config pointing to NEW color ports
             sed "s/__PORT__/$PORT/g; s/__PORT_BACKEND_EXTERNAL__/$PORT_BACKEND_EXTERNAL/g; s/__DOMAIN__/$DOMAIN/g" \
@@ -73,9 +93,16 @@ jobs:
               sudo systemctl reload nginx
               echo "✅ Switched Nginx to $BRANCH ($NEWCOLOR)"
 
-              docker compose -p "$BRANCH-$CURRENT_COLOR" down || true
-              echo "$NEWCOLOR" | sudo tee "$COLOR_FILE" > /dev/null
+              (
+                cd ~/neiwa/frontend
+                docker compose -p "$BRANCH-$CURRENT_COLOR" down || true
+              )
+              (
+                cd ~/neiwa/backend
+                docker compose -p "$BRANCH-$CURRENT_COLOR" down || true
+              )
 
+              echo "$NEWCOLOR" | sudo tee "$COLOR_FILE" > /dev/null
               docker image prune -f
             else
               echo "❌ Nginx config test failed"
