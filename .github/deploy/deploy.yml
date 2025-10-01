@@ -1,52 +1,83 @@
-name: Deploy Backend
+name: Deploy
 
 on:
   push:
-    branches:
-      - main
-      - tannu
-      - "**"
+    branches: [ main, tannu ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v0.1.7
+      - name: Extract branch name
+        id: vars
+        run: echo "branch=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Hetzner (Blue/Green)
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
             set -e
+            BRANCH="${{ steps.vars.outputs.branch }}"
+            echo "🚀 Deploying $BRANCH"
 
-            cd ~/neiwa/backend
+            ENV_FILE=~/neiwa/frontend/.env
+            COLOR_FILE="/var/run/deploy/${BRANCH}.color"
 
-            # Pick color (blue/green)
-            if [ ! -f current_color_${GITHUB_REF_NAME} ]; then
-              COLOR=blue
+            # Determine colors
+            if [ -f "$COLOR_FILE" ]; then CURRENT_COLOR=$(cat "$COLOR_FILE"); else CURRENT_COLOR="blue"; fi
+            if [ "$CURRENT_COLOR" = "blue" ]; then NEWCOLOR="green"; else NEWCOLOR="blue"; fi
+            echo "🔄 $BRANCH: $CURRENT_COLOR -> $NEWCOLOR"
+
+            # Load ports from .env
+            FRONTEND_PORT_VAR="PORT_${BRANCH^^}_${NEWCOLOR^^}"
+            PORT=$(grep ^$FRONTEND_PORT_VAR= "$ENV_FILE" | cut -d '=' -f2)
+
+            BACKEND_PORT_VAR="PORT_BACKEND_${BRANCH^^}_${NEWCOLOR^^}"
+            PORT_BACKEND_EXTERNAL=$(grep ^$BACKEND_PORT_VAR= "$ENV_FILE" | cut -d '=' -f2)
+
+            PORT_DOCKER_INTERNAL=$(grep ^PORT_DOCKER_INTERNAL= "$ENV_FILE" | cut -d '=' -f2)
+            PORT_DOCKER_INTERNAL_BACKEND=$(grep ^PORT_DOCKER_INTERNAL_BACKEND= "$ENV_FILE" | cut -d '=' -f2)
+
+            echo "🌐 FE ext: $PORT | 🔧 FE int: $PORT_DOCKER_INTERNAL"
+            echo "🧰 BE ext: $PORT_BACKEND_EXTERNAL | 🔧 BE int: $PORT_DOCKER_INTERNAL_BACKEND"
+
+            # Domain(s)
+            if [ "$BRANCH" = "main" ]; then DOMAIN="neiwa.eu www.neiwa.eu"; else DOMAIN="$BRANCH.neiwa.eu"; fi
+
+            # === Pull latest code
+            cd ~/neiwa/frontend
+            git fetch origin "$BRANCH"
+            git checkout "$BRANCH" || git checkout -b "$BRANCH"
+            git reset --hard "origin/$BRANCH"
+            git clean -fd
+
+            # === Start NEW color (frontend + backend) under one compose file
+            PORT=$PORT \
+            PORT_DOCKER_INTERNAL=$PORT_DOCKER_INTERNAL \
+            PORT_BACKEND_EXTERNAL=$PORT_BACKEND_EXTERNAL \
+            PORT_DOCKER_INTERNAL_BACKEND=$PORT_DOCKER_INTERNAL_BACKEND \
+              docker compose -p "$BRANCH-$NEWCOLOR" up -d --build
+
+            # === Generate Nginx config pointing to NEW color ports
+            sed "s/__PORT__/$PORT/g; s/__PORT_BACKEND_EXTERNAL__/$PORT_BACKEND_EXTERNAL/g; s/__DOMAIN__/$DOMAIN/g" \
+              ~/neiwa/frontend/nginx/nginx.template.conf \
+              | sudo tee "/etc/nginx/sites-enabled/$BRANCH.conf" > /dev/null
+
+            # === Reload Nginx, then stop OLD color
+            if sudo nginx -t; then
+              sudo systemctl reload nginx
+              echo "✅ Switched Nginx to $BRANCH ($NEWCOLOR)"
+
+              docker compose -p "$BRANCH-$CURRENT_COLOR" down || true
+              echo "$NEWCOLOR" | sudo tee "$COLOR_FILE" > /dev/null
+
+              docker image prune -f
             else
-              CURRENT=$(cat current_color_${GITHUB_REF_NAME})
-              if [ "$CURRENT" = "blue" ]; then COLOR=green; else COLOR=blue; fi
+              echo "❌ Nginx config test failed"
+              exit 1
             fi
-
-            echo "Deploying branch=${GITHUB_REF_NAME} color=$COLOR"
-
-            BRANCH_NAME=${GITHUB_REF_NAME}
-            export BRANCH_NAME
-            export COLOR
-
-            git fetch origin $GITHUB_REF_NAME
-            git checkout $GITHUB_REF_NAME
-            git reset --hard origin/$GITHUB_REF_NAME
-
-            docker compose -p ${BRANCH_NAME}-${COLOR} up -d --build
-
-            echo $COLOR > current_color_${GITHUB_REF_NAME}
-
-            # Reload nginx (frontend repo owns config, but we need fresh reload)
-            sudo systemctl reload nginx
