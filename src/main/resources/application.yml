@@ -1,2 +1,17 @@
+spring:
+  profiles:
+    active: prod
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
 server:
-  port: ${PORT_DOCKER_INTERNAL_BACKEND:8080}
+  port: ${PORT_DOCKER_INTERNAL_BACKEND:7777}
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+server:
+  port: ${PORT_DEV_BACKEND:8080}
