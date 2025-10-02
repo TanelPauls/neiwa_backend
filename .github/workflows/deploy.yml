@@ -83,6 +83,24 @@ jobs:
               docker compose --env-file $ENV_FILE -p "$BRANCH-$NEWCOLOR" up -d --build
             )
 
+            # === Wait until new containers are healthy
+            MAX_WAIT=600   # 10 minutes
+            START=$(date +%s)
+
+            echo "⏳ Waiting for new frontend/backend containers to be healthy..."
+
+            for svc in frontend backend; do
+              until [ "$(docker inspect --format='{{.State.Health.Status}}' ${BRANCH}-${NEWCOLOR}-${svc}-1 2>/dev/null)" = "healthy" ]; do
+                if [ $(( $(date +%s) - START )) -gt $MAX_WAIT ]; then
+                  echo "❌ $svc failed to become healthy within ${MAX_WAIT}s"
+                  exit 1
+                fi
+                echo "   ⏳ $svc not healthy yet, waiting..."
+                sleep 10
+              done
+              echo "   ✅ $svc is healthy"
+            done
+
             # === Generate Nginx config pointing to NEW color ports
             sed "s/__PORT__/$PORT/g; s/__PORT_BACKEND_EXTERNAL__/$PORT_BACKEND_EXTERNAL/g; s/__DOMAIN__/$DOMAIN/g" \
               ~/neiwa/frontend/nginx/nginx.template.conf \

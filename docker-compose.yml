@@ -8,3 +8,7 @@ services:
     ports:
       - "${PORT_BACKEND_EXTERNAL}:${PORT_DOCKER_INTERNAL_BACKEND}"
     restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:${PORT_DOCKER_INTERNAL}" ]
+      interval: 10s
+      retries: 30
