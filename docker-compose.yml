@@ -9,6 +9,8 @@ services:
       - "${PORT_BACKEND_EXTERNAL}:${PORT_DOCKER_INTERNAL_BACKEND}"
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:${PORT_DOCKER_INTERNAL}" ]
+      test: ["CMD", "curl", "-f", "http://localhost:7777/api/hello"]
       interval: 10s
+      timeout: 5s
       retries: 30
+      start_period: 20s
