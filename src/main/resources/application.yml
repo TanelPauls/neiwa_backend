@@ -34,3 +34,4 @@ spring:
     database-platform: org.hibernate.dialect.MariaDBDialect
 server:
   port: ${PORT_DEV_BACKEND:8080}
+  
