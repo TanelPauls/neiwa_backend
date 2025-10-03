@@ -14,7 +14,12 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**")
-                        .allowedOrigins("http://localhost:1337")
+                        .allowedOrigins(
+                            "http://localhost:1337",
+                            "https://tannu.neiwa.eu",
+                            "https://neiwa.eu",
+                            "https://www.neiwa.eu"
+                        )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowCredentials(true);
             }
