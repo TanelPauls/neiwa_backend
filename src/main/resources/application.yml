@@ -14,7 +14,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
 server:
   port: ${PORT_DOCKER_INTERNAL_BACKEND:7777}
 ---
