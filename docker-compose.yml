@@ -10,9 +10,9 @@ services:
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7777/api/hello"]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 20s
+#    healthcheck:
+#      test: ["CMD", "curl", "-f", "http://localhost:${PORT_DOCKER_INTERNAL_BACKEND}/api/hello"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 30
+#      start_period: 20s
