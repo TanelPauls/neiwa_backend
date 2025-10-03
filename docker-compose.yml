@@ -16,3 +16,12 @@ services:
       timeout: 5s
       retries: 30
       start_period: 20s
+    networks:
+      - neiwa-net
+
+networks:
+  neiwa-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.13.0.0/16
