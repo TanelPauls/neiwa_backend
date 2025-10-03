@@ -7,13 +7,11 @@ services:
       - PORT_DOCKER_INTERNAL_BACKEND=${PORT_DOCKER_INTERNAL_BACKEND}
     ports:
       - "${PORT_BACKEND_EXTERNAL}:${PORT_DOCKER_INTERNAL_BACKEND}"
- #   restart: unless-stopped
-    restart: no
+    restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD", "true"]
-#      test: ["CMD", "curl", "-f", "http://localhost:${PORT_DOCKER_INTERNAL_BACKEND}/api/hello"]
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT_DOCKER_INTERNAL_BACKEND}/api/hello"]
       interval: 10s
       timeout: 5s
       retries: 30
