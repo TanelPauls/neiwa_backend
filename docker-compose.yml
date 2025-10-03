@@ -21,7 +21,4 @@ services:
 
 networks:
   neiwa-net:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.13.0.0/16
+    external: true
