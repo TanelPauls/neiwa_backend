@@ -6,6 +6,15 @@ spring:
   config:
     activate:
       on-profile: prod
+  datasource:
+    url: jdbc:mariadb://${DB_HOST:localhost}:${DB_PORT:3306}/neiwa_db
+    username: ${DB_USER}
+    password: ${DB_PASS}
+    driver-class-name: org.mariadb.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
 server:
   port: ${PORT_DOCKER_INTERNAL_BACKEND:7777}
 ---
@@ -13,5 +22,15 @@ spring:
   config:
     activate:
       on-profile: dev
+  datasource:
+    url: jdbc:mariadb://${DB_HOST_LOCAL:localhost}:${DB_PORT_LOCAL:3306}/neiwa_db
+    username: ${DB_USER_LOCAL}
+    password: ${DB_PASS_LOCAL}
+    driver-class-name: org.mariadb.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    database-platform: org.hibernate.dialect.MariaDBDialect
 server:
   port: ${PORT_DEV_BACKEND:8080}
