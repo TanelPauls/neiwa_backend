@@ -80,7 +80,7 @@ jobs:
               PORT_DOCKER_INTERNAL=$PORT_DOCKER_INTERNAL \
               PORT_BACKEND_EXTERNAL=$PORT_BACKEND_EXTERNAL \
               PORT_DOCKER_INTERNAL_BACKEND=$PORT_DOCKER_INTERNAL_BACKEND \
-              docker compose --env-file $ENV_FILE -p "$BRANCH-$NEWCOLOR" up -d --build --add-host=host.docker.internal:host-gateway
+              docker compose --env-file $ENV_FILE -p "$BRANCH-$NEWCOLOR" up -d --build
             )
 
             # === Wait until new containers are healthy
