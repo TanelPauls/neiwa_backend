@@ -135,3 +135,4 @@ jobs:
               echo "❌ Nginx config test failed"
               exit 1
             fi
+            
