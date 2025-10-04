@@ -52,8 +52,7 @@ jobs:
             # === Pull latest frontend
             cd ~/neiwa/frontend
             git fetch origin "$BRANCH"
-            git checkout "$BRANCH" || git checkout -b "$BRANCH"
-            git reset --hard "origin/$BRANCH"
+            git switch --force-create "$BRANCH" "origin/$BRANCH" || git switch "$BRANCH"
             git clean -fd
 
             # === Start NEW color (frontend)
@@ -63,14 +62,13 @@ jobs:
               PORT_DOCKER_INTERNAL=$PORT_DOCKER_INTERNAL \
               PORT_BACKEND_EXTERNAL=$PORT_BACKEND_EXTERNAL \
               PORT_DOCKER_INTERNAL_BACKEND=$PORT_DOCKER_INTERNAL_BACKEND \
-              docker compose --env-file $ENV_FILE -p "$BRANCH-$NEWCOLOR" up -d --build
+              docker compose --env-file $ENV_FILE -p "$BRANCH-$NEWCOLOR" up -d --build --remove-orphans
             )
 
             # === Pull latest backend
             cd ~/neiwa/backend
             git fetch origin "$BRANCH"
-            git checkout "$BRANCH" || git checkout -b "$BRANCH"
-            git reset --hard "origin/$BRANCH"
+            git switch --force-create "$BRANCH" "origin/$BRANCH" || git switch "$BRANCH"
             git clean -fd
 
             # === Start NEW color (backend)
@@ -80,7 +78,7 @@ jobs:
               PORT_DOCKER_INTERNAL=$PORT_DOCKER_INTERNAL \
               PORT_BACKEND_EXTERNAL=$PORT_BACKEND_EXTERNAL \
               PORT_DOCKER_INTERNAL_BACKEND=$PORT_DOCKER_INTERNAL_BACKEND \
-              docker compose --env-file $ENV_FILE -p "$BRANCH-$NEWCOLOR" up -d --build
+              docker compose --env-file $ENV_FILE -p "$BRANCH-$NEWCOLOR" up -d --build --remove-orphans
             )
 
             # === Wait until new containers are healthy
@@ -111,6 +109,8 @@ jobs:
               sudo systemctl reload nginx
               echo "✅ Switched Nginx to $BRANCH ($NEWCOLOR)"
 
+              echo "🕒 Waiting 10s for in-flight requests to finish..."
+              sleep 10
               (
                 cd ~/neiwa/frontend
                 docker compose -p "$BRANCH-$CURRENT_COLOR" down || true
@@ -121,7 +121,16 @@ jobs:
               )
 
               echo "$NEWCOLOR" | sudo tee "$COLOR_FILE" > /dev/null
-              docker image prune -f
+              docker image prune -f --filter "until=24h" || true
+              docker builder prune -f --filter "unused-for=24h" || true
+              docker network prune -f --filter "until=24h" || true
+              docker container prune -f || true
+
+              find /root/.gradle/caches/ -type d -mtime +30 -exec rm -rf {} + || true
+              find /var/lib/docker/volumes/npm_cache/_data -type f -mtime +30 -delete || true
+              find /var/lib/docker/containers/ -name "*-json.log" -size +100M -exec truncate -s 0 {} \;
+
+              echo "✅ Cleanup done!"
             else
               echo "❌ Nginx config test failed"
               exit 1
