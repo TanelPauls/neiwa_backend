@@ -4,7 +4,7 @@ ENV GRADLE_USER_HOME=/home/gradle/.gradle
 WORKDIR /app
 
 # Cache dependency layer
-COPY build.gradle settings.gradle gradle.properties ./
+COPY build.gradle settings.gradle ./
 COPY gradle gradle
 RUN gradle dependencies --no-daemon --build-cache || true
 
